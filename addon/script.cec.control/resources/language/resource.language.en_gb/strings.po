@@ -1,0 +1,56 @@
+# CEC Control - en_GB
+msgid ""
+msgstr ""
+"Project-Id-Version: script.cec.control\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgctxt "#30000"
+msgid "Actions"
+msgstr "Actions"
+
+msgctxt "#30010"
+msgid "Allowed actions"
+msgstr "Allowed actions"
+
+msgctxt "#30011"
+msgid "Allow turning the TV off (standby)"
+msgstr "Allow turning the TV off (standby)"
+
+msgctxt "#30012"
+msgid "If disabled, a standby request is rejected and logged."
+msgstr "If disabled, a standby request is rejected and logged."
+
+msgctxt "#30013"
+msgid "Allow turning the TV on (activate source)"
+msgstr "Allow turning the TV on (activate source)"
+
+msgctxt "#30014"
+msgid "Turns the TV on and switches it to this device's HDMI input."
+msgstr "Turns the TV on and switches it to this device's HDMI input."
+
+msgctxt "#30015"
+msgid "Allow toggling the TV"
+msgstr "Allow toggling the TV"
+
+msgctxt "#30016"
+msgid "Disabled by default: the result depends on a state that the caller cannot see."
+msgstr "Disabled by default: the result depends on a state that the caller cannot see."
+
+msgctxt "#30020"
+msgid "Feedback"
+msgstr "Feedback"
+
+msgctxt "#30021"
+msgid "Show an on-screen notification when a command runs"
+msgstr "Show an on-screen notification when a command runs"
+
+msgctxt "#30022"
+msgid "Errors are always shown, regardless of this setting."
+msgstr "Errors are always shown, regardless of this setting."
+
+msgctxt "#30200"
+msgid "CEC command sent: %s"
+msgstr "CEC command sent: %s"

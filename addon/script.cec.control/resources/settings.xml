@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="1">
+  <section id="script.cec.control">
+    <category id="acciones" label="30000">
+      <group id="1" label="30010">
+        <setting id="allow_standby" type="boolean" label="30011" help="30012">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="allow_activate" type="boolean" label="30013" help="30014">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="allow_toggle" type="boolean" label="30015" help="30016">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
+      <group id="2" label="30020">
+        <setting id="notify_on_run" type="boolean" label="30021" help="30022">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
+    </category>
+  </section>
+</settings>
