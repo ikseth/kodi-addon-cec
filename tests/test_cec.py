@@ -1,12 +1,7 @@
 """Tests de la capa de decision. No requieren Kodi: cec.py no lo importa."""
-import os
-import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "addon", "script.cec.control", "resources", "lib"))
 
 from cec import BUILTINS, SETTING_FOR, CecError, parse_action, resolve
 

@@ -45,6 +45,48 @@ Cada una se habilita o veta por separado en los ajustes del addon. `toggle` vien
 **desactivada por defecto**: su resultado depende de un estado que quien llama no
 ve, asi que es facil usarla por error.
 
+## Estado del televisor (desde 0.2.0)
+
+Un servicio del addon pregunta al televisor por CEC si esta encendido y publica
+la respuesta como propiedades de `Window(Home)`. Asi un sistema domotico conoce el
+estado **real**, aunque el televisor haya perdido la red.
+
+Se leen desde fuera por JSON-RPC:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "XBMC.GetInfoLabels",
+ "params": {"labels": ["Window(Home).Property(cec.tv_power)",
+                       "Window(Home).Property(cec.tv_power_ts)"]}}
+```
+
+| Propiedad | Contenido |
+|---|---|
+| `cec.protocol` | Version del contrato. Un cambio incompatible la sube |
+| `cec.tv_power` | `on`, `standby` o `unknown` |
+| `cec.tv_power_ts` | Hora (epoch, s) de la ultima consulta |
+| `cec.error` | Vacio si hubo respuesta; si no, el motivo (`nack`, `no_reply`, `EBUSY`...) |
+| `cec.device` | Adaptador consultado |
+| `cec.poll_interval` | Segundos entre consultas |
+
+Reglas para quien consuma el estado:
+
+- **`unknown` no significa apagado.** Un televisor desenchufado de la corriente no
+  contesta (`nack`); no se puede afirmar nada de el.
+- **Una propiedad vacia o antigua es estado desconocido.** Las propiedades viven en
+  memoria de Kodi: desaparecen al reiniciarlo o si se desactiva la publicacion.
+  Se considera antigua si `cec.tv_power_ts` supera en varias veces
+  `cec.poll_interval`.
+- Tras `standby` o `activate` el servicio relee el estado cada 3 s hasta ver el
+  cambio, con un maximo de 60 s.
+- **Durante una transicion el televisor puede no contestar** y publicarse `unknown`
+  (medido: tras un `standby`, `unknown` a los 2 s y `standby` a los 5 s; tras un
+  encendido, `unknown` durante mas de 30 s).
+  Un consumidor no deberia marcar el televisor como no disponible por una sola
+  lectura `unknown`: conviene mantener el ultimo estado conocido un margen breve.
+
+La consulta abre el adaptador en modo **no exclusivo**, compatible con el CEC de
+Kodi: ver `docs/DESIGN.md`.
+
 ## Uso
 
 Desde Home Assistant:

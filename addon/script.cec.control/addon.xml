@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.cec.control" name="CEC Control" version="0.1.0" provider-name="IG">
+<addon id="script.cec.control" name="CEC Control" version="0.2.1" provider-name="IG">
   <requires>
     <import addon="xbmc.python" version="3.0.0" />
   </requires>
   <extension point="xbmc.python.script" library="default.py" />
+  <extension point="xbmc.service" library="service.py" start="login" />
   <extension point="xbmc.addon.metadata">
     <summary lang="es_ES">Envia comandos CEC al televisor desde Kodi</summary>
     <summary lang="en_GB">Send CEC commands to the TV from Kodi</summary>
-    <description lang="es_ES">Expone las acciones CEC de Kodi (apagar el televisor, encenderlo y activarlo como fuente, o alternar) para que se puedan invocar desde fuera por JSON-RPC con Addons.ExecuteAddon. Pensado para domotica: permite apagar un televisor que ha perdido la conexion de red, porque CEC viaja por el cable HDMI y no depende de la red. Usa el CEC del propio Kodi, asi que no compite por el adaptador ni necesita acceso por SSH al equipo.</description>
-    <description lang="en_GB">Exposes Kodi's CEC actions (TV off, TV on and activate as source, or toggle) so they can be invoked externally over JSON-RPC with Addons.ExecuteAddon. Aimed at home automation: it can switch off a TV that has lost its network connection, because CEC travels over the HDMI cable. It uses Kodi's own CEC stack, so it neither competes for the adapter nor needs SSH access to the box.</description>
-    <news>0.1.0
+    <description lang="es_ES">Expone las acciones CEC de Kodi (apagar el televisor, encenderlo y activarlo como fuente, o alternar) para que se puedan invocar desde fuera por JSON-RPC con Addons.ExecuteAddon. Pensado para domotica: permite apagar un televisor que ha perdido la conexion de red, porque CEC viaja por el cable HDMI y no depende de la red. Usa el CEC del propio Kodi, asi que no compite por el adaptador ni necesita acceso por SSH al equipo. Ademas publica el estado real de encendido del televisor, leido por CEC, para que el sistema domotico lo conozca aunque el televisor no tenga red.</description>
+    <description lang="en_GB">Exposes Kodi's CEC actions (TV off, TV on and activate as source, or toggle) so they can be invoked externally over JSON-RPC with Addons.ExecuteAddon. Aimed at home automation: it can switch off a TV that has lost its network connection, because CEC travels over the HDMI cable. It uses Kodi's own CEC stack, so it neither competes for the adapter nor needs SSH access to the box. It also publishes the TV's real power state, read over CEC, so home automation knows it even when the TV has no network.</description>
+    <news>0.2.1
+- Tras una orden el estado se relee cada 3 s hasta ver el cambio (maximo 60 s), en vez de una rafaga fija a 2, 5 y 10 s que se quedaba corta para el encendido: el televisor no contesta por CEC hasta ~40 s despues.
+- El planificador de consultas usa reloj monotonico. Un salto de la hora del sistema (habitual al sincronizar tras el arranque) ya no puede dejar el servicio sin consultar.
+
+0.2.0
+- Nuevo servicio que consulta el estado de encendido del televisor por CEC y lo publica en Window(Home) (cec.tv_power y compania) para leerlo por JSON-RPC.
+- Tras enviar una orden, el estado se relee en rafaga para reflejar el cambio en segundos.
+
+0.1.0
 - Version inicial. Acciones standby, activate y toggle, cada una habilitable por separado.</news>
     <platform>all</platform>
     <license>GPL-3.0-or-later</license>

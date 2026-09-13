@@ -11,6 +11,7 @@ Ejemplo desde Home Assistant:
 """
 import os
 import sys
+import time
 
 import xbmc
 import xbmcaddon
@@ -20,6 +21,7 @@ sys.path.insert(0, os.path.join(
     xbmcaddon.Addon().getAddonInfo("path"), "resources", "lib"))
 
 from cec import CecError, parse_action, resolve  # noqa: E402  (tras ajustar sys.path)
+from state import PROP_REFRESH_REQUEST  # noqa: E402
 
 ADDON = xbmcaddon.Addon()
 NOMBRE = ADDON.getAddonInfo("name")
@@ -50,6 +52,8 @@ def main(argv):
 
     xbmc.log("%s: accion '%s' -> builtin %s" % (NOMBRE, accion, builtin), xbmc.LOGINFO)
     xbmc.executebuiltin(builtin)
+    # El servicio relee el estado del televisor en rafaga al ver este cambio.
+    xbmcgui.Window(10000).setProperty(PROP_REFRESH_REQUEST, "%.3f" % time.time())
     _avisar(ADDON.getLocalizedString(30200) % accion)
     return 0
 

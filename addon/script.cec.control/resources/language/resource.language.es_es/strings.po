@@ -51,6 +51,50 @@ msgctxt "#30022"
 msgid "Errors are always shown, regardless of this setting."
 msgstr "Los errores se muestran siempre, con independencia de este ajuste."
 
+msgctxt "#30100"
+msgid "Power state"
+msgstr "Estado"
+
+msgctxt "#30110"
+msgid "TV power state"
+msgstr "Estado de encendido del televisor"
+
+msgctxt "#30111"
+msgid "Publish the TV power state"
+msgstr "Publicar el estado de encendido del televisor"
+
+msgctxt "#30112"
+msgid "Periodically asks the TV over CEC whether it is on and publishes the answer as Window(Home) properties, readable over JSON-RPC."
+msgstr "Pregunta periodicamente al televisor por CEC si esta encendido y publica la respuesta como propiedades de Window(Home), legibles por JSON-RPC."
+
+msgctxt "#30113"
+msgid "Polling interval (seconds)"
+msgstr "Intervalo de consulta (segundos)"
+
+msgctxt "#30114"
+msgid "After each command the state is also re-read a few times in quick succession."
+msgstr "Tras cada orden, ademas, el estado se relee varias veces seguidas."
+
+msgctxt "#30115"
+msgid "CEC adapter"
+msgstr "Adaptador CEC"
+
+msgctxt "#30116"
+msgid "Automatic picks the first adapter with a device connected."
+msgstr "Automatico elige el primer adaptador con un dispositivo conectado."
+
+msgctxt "#30117"
+msgid "Automatic"
+msgstr "Automatico"
+
+msgctxt "#30118"
+msgid "/dev/cec0"
+msgstr "/dev/cec0"
+
+msgctxt "#30119"
+msgid "/dev/cec1"
+msgstr "/dev/cec1"
+
 msgctxt "#30200"
 msgid "CEC command sent: %s"
 msgstr "Comando CEC enviado: %s"
