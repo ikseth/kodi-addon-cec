@@ -148,3 +148,53 @@ def test_find_adapter_sin_conexion_devuelve_el_primero_y_sin_dispositivos_none()
     adapter = FakeAdapter(phys=ck.CEC_PHYS_ADDR_INVALID)
     assert kernel(adapter).find_adapter(("/dev/cec0", "/dev/cec1")) == "/dev/cec0"
     assert kernel(adapter, exists=lambda p: False).find_adapter(("/dev/cec0",)) is None
+
+
+# ---- 0.3.0: standby directo y fuente activa
+
+def test_standby_directo_se_envia_al_televisor_desde_la_direccion_de_kodi():
+    adapter = FakeAdapter(log_addr=1, rx_status=0, reply=b"")
+    assert kernel(adapter).send_standby("/dev/cec0") is None
+    assert adapter.sent == bytes([0x10, ck.OP_STANDBY])
+    assert adapter.reply_opcode == 0                      # no espera respuesta
+    assert adapter.mode == ck.CEC_MODE_INITIATOR          # no desaloja a Kodi
+    assert adapter.closed == 1
+
+
+@pytest.mark.parametrize("tx_status, error", [(ck.CEC_TX_STATUS_NACK, "nack"), (0x02, "tx_error")])
+def test_standby_directo_informa_si_el_televisor_no_lo_acepta(tx_status, error):
+    adapter = FakeAdapter(tx_status=tx_status, reply=b"")
+    assert kernel(adapter).send_standby("/dev/cec0") == error
+
+
+def test_standby_directo_con_adaptador_ocupado_devuelve_el_error_y_cierra():
+    adapter = FakeAdapter(busy=True)
+    assert kernel(adapter).send_standby("/dev/cec0") == "EBUSY"
+    assert adapter.closed == 1
+
+
+def test_fuente_activa_kodi():
+    adapter = FakeAdapter(phys=0x3000, log_addr=1, reply=b"\x4f\x82\x30\x00")
+    active = kernel(adapter).query_active_source("/dev/cec0")
+    assert adapter.sent == bytes([0x1F, ck.OP_REQUEST_ACTIVE_SOURCE])   # a todo el bus
+    assert adapter.reply_opcode == ck.OP_ACTIVE_SOURCE
+    assert active.kodi == ck.KODI_ACTIVE_YES and active.address == 0x3000
+
+
+def test_fuente_activa_el_propio_televisor_en_la_tdt():
+    adapter = FakeAdapter(phys=0x3000, reply=b"\x0f\x82\x00\x00")   # medido con la TDT
+    active = kernel(adapter).query_active_source("/dev/cec0")
+    assert active.kodi == ck.KODI_ACTIVE_NO
+    assert ck.format_physical(active.address) == "0.0.0.0"
+
+
+@pytest.mark.parametrize("rx_status, reply, error", [
+    (0, b"", "no_reply"), (0x01, b"\x0f\x90\x00", "unexpected_reply")])
+def test_fuente_activa_desconocida(rx_status, reply, error):
+    active = kernel(FakeAdapter(rx_status=rx_status, reply=reply)).query_active_source("/dev/cec0")
+    assert active.kodi == ck.KODI_ACTIVE_UNKNOWN and active.error == error
+
+
+def test_fuente_activa_sin_direccion_propia_es_desconocida():
+    adapter = FakeAdapter(phys=ck.CEC_PHYS_ADDR_INVALID, reply=b"\x0f\x82\x00\x00")
+    assert kernel(adapter).query_active_source("/dev/cec0").kodi == ck.KODI_ACTIVE_UNKNOWN

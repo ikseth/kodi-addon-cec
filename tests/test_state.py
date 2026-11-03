@@ -2,7 +2,7 @@
 import pytest
 
 import state
-from cec_kernel import Reading
+from cec_kernel import ActiveSource, Reading
 
 
 def test_propiedades_publicadas():
@@ -10,8 +10,18 @@ def test_propiedades_publicadas():
     assert props == {
         "cec.protocol": state.PROTOCOL, "cec.tv_power": "on",
         "cec.tv_power_ts": "1000", "cec.error": "", "cec.device": "/dev/cec0",
-        "cec.poll_interval": "30"}
+        "cec.poll_interval": "30", "cec.active_source": "",
+        "cec.kodi_active_source": "unknown"}
     assert set(props) == set(state.PUBLISHED_PROPERTIES)
+
+
+@pytest.mark.parametrize("address, kodi", [(0x3000, "yes"), (0x0000, "no"), (None, "unknown")])
+def test_propiedades_de_fuente_activa(address, kodi):
+    active = ActiveSource(address, 0x3000, None if address is not None else "no_reply", "/dev/cec0")
+    props = state.build_properties(Reading("on", None, "/dev/cec0"), 1, 30, active)
+    assert props["cec.kodi_active_source"] == kodi
+    assert props["cec.active_source"] == ("" if address is None else "%x.%x.%x.%x" % (
+        address >> 12, (address >> 8) & 15, (address >> 4) & 15, address & 15))
 
 
 def test_propiedades_con_error_y_sin_adaptador():

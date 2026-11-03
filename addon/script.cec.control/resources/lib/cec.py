@@ -1,10 +1,9 @@
 """Capa de decision del addon, sin dependencias de Kodi para poder testearla.
 
-El addon no habla con el bus CEC por su cuenta: traduce una accion a un builtin
-de Kodi y deja que sea Kodi quien transmita. Ese reparto es deliberado. libCEC
-va compilado dentro de Kodi y mantiene el adaptador abierto en modo exclusivo,
-asi que cualquier proceso externo que intente abrirlo recibe EBUSY. Pidiendoselo
-a Kodi el problema desaparece.
+Cada accion se traduce a un builtin de Kodi. Excepcion desde 0.3.0: el standby se
+envia primero directamente por el API CEC del kernel (modo iniciador no exclusivo,
+el mismo que usa la lectura del estado), porque CECStandby solo actua si Kodi es la
+fuente activa. Si el envio directo falla o esta desactivado, se usa el builtin.
 """
 
 # Accion publica -> builtin de Kodi que la ejecuta.
@@ -20,6 +19,28 @@ SETTING_FOR = {
     "activate": "allow_activate",
     "toggle": "allow_toggle",
 }
+
+
+# Ajuste que activa el envio directo del standby por el kernel (0.3.0).
+SETTING_STANDBY_DIRECT = "standby_direct"
+
+
+def plan_standby(direct_enabled, device, send):
+    """Decide como ejecutar el standby.
+
+    `send(device)` envia el standby por el kernel y devuelve None o un error.
+    Devuelve (via, error): via es 'kernel' si se envio directamente, o 'builtin'
+    si hay que recurrir a CECStandby (con el motivo en `error`, o None si el envio
+    directo esta desactivado).
+    """
+    if not direct_enabled:
+        return "builtin", None
+    if not device:
+        return "builtin", "no_adapter"
+    error = send(device)
+    if error is None:
+        return "kernel", None
+    return "builtin", error
 
 
 class CecError(Exception):

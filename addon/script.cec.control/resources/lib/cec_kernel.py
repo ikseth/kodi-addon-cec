@@ -1,9 +1,14 @@
-"""Lectura del estado de encendido del televisor por el API CEC del kernel.
+"""Lectura del estado del televisor y envio del standby por el API CEC del kernel.
 
 No importa nada de Kodi, para poder testearlo. Ver docs/DESIGN.md: el adaptador
 se abre en modo iniciador NO exclusivo, que el kernel concede en paralelo al modo
 exclusivo con el que libCEC (dentro de Kodi) lo mantiene abierto. Asi se puede
 preguntar al televisor sin desalojar a Kodi.
+
+Desde 0.3.0 tambien se transmite el standby por esta via: el builtin CECStandby de
+Kodi solo lo envia si Kodi es la fuente activa, asi que con el televisor en la TDT u
+otra entrada no hacia nada. Y se pregunta quien es la fuente activa (Request Active
+Source), para saber si lo que se ve es Kodi.
 
 Las llamadas al sistema (open, close, ioctl, exists) se inyectan en CecKernel
 para que los tests puedan simular un adaptador.
@@ -44,6 +49,7 @@ CEC_PHYS_ADDR_INVALID = 0xFFFF     # adaptador sin nada conectado
 CEC_LOG_ADDR_TV = 0x0
 CEC_LOG_ADDR_UNREGISTERED = 0xF
 CEC_LOG_ADDR_INVALID = 0xFF
+CEC_LOG_ADDR_BROADCAST = 0xF
 
 CEC_TX_STATUS_OK = 0x01
 CEC_TX_STATUS_NACK = 0x04
@@ -51,6 +57,13 @@ CEC_RX_STATUS_OK = 0x01
 
 OP_GIVE_DEVICE_POWER_STATUS = 0x8F
 OP_REPORT_POWER_STATUS = 0x90
+OP_STANDBY = 0x36
+OP_REQUEST_ACTIVE_SOURCE = 0x85
+OP_ACTIVE_SOURCE = 0x82
+
+KODI_ACTIVE_YES = "yes"
+KODI_ACTIVE_NO = "no"
+KODI_ACTIVE_UNKNOWN = "unknown"
 
 POWER_ON = "on"
 POWER_STANDBY = "standby"
@@ -120,6 +133,63 @@ def interpret(tx_status, rx_status, body):
     return state, None
 
 
+def interpret_tx(tx_status):
+    """Resultado de una orden sin respuesta: None si el televisor la acepto."""
+    if tx_status & CEC_TX_STATUS_OK:
+        return None
+    return "nack" if tx_status & CEC_TX_STATUS_NACK else "tx_error"
+
+
+def interpret_active_source(tx_status, rx_status, body):
+    """Traduce la respuesta a Request Active Source a (direccion_fisica, error)."""
+    error = interpret_tx(tx_status)
+    if error:
+        return None, error
+    if not rx_status & CEC_RX_STATUS_OK:
+        return None, "no_reply"
+    if len(body) < 4 or body[1] != OP_ACTIVE_SOURCE:
+        return None, "unexpected_reply"
+    return (body[2] << 8) | body[3], None
+
+
+def format_physical(address):
+    """0x3000 -> '3.0.0.0'; None -> ''."""
+    if address is None:
+        return ""
+    return "%x.%x.%x.%x" % ((address >> 12) & 0xF, (address >> 8) & 0xF,
+                            (address >> 4) & 0xF, address & 0xF)
+
+
+class ActiveSource(object):
+    """Quien es la fuente activa y si es este equipo (Kodi)."""
+
+    __slots__ = ("address", "own", "error", "device")
+
+    def __init__(self, address, own, error, device):
+        self.address = address
+        self.own = own
+        self.error = error
+        self.device = device
+
+    @property
+    def kodi(self):
+        if self.address is None or self.own in (None, CEC_PHYS_ADDR_INVALID):
+            return KODI_ACTIVE_UNKNOWN
+        return KODI_ACTIVE_YES if self.address == self.own else KODI_ACTIVE_NO
+
+    def __eq__(self, other):
+        return isinstance(other, ActiveSource) and (
+            (self.address, self.own, self.error, self.device)
+            == (other.address, other.own, other.error, other.device))
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "ActiveSource(address=%r, own=%r, kodi=%r, error=%r)" % (
+            format_physical(self.address), format_physical(self.own), self.kodi, self.error)
+
+
 def _error_name(exc):
     return errno.errorcode.get(getattr(exc, "errno", None), "oserror")
 
@@ -166,20 +236,64 @@ class CecKernel(object):
                 self._close(fd)
         return existing[0] if existing else None
 
+    def _initiator(self, device):
+        """Abre el adaptador en modo iniciador no exclusivo. Devuelve el descriptor."""
+        fd = self._open(device, os.O_RDWR)
+        try:
+            self._ioctl(fd, CEC_S_MODE, struct.pack("I", CEC_MODE_INITIATOR))
+        except OSError:
+            self._close(fd)
+            raise
+        return fd
+
+    def _transmit(self, fd, destination, opcode, reply_opcode, timeout_ms):
+        origin = self.logical_address(fd)
+        message = build_message(origin, destination, opcode)
+        buf = array.array("B", pack_transmit(message, reply_opcode, timeout_ms))
+        self._ioctl(fd, CEC_TRANSMIT, buf, True)
+        return parse_transmit(bytes(buf))
+
     def query_power(self, device, timeout_ms=1000):
         try:
-            fd = self._open(device, os.O_RDWR)
+            fd = self._initiator(device)
         except OSError as exc:
             return Reading(POWER_UNKNOWN, _error_name(exc), device)
         try:
-            self._ioctl(fd, CEC_S_MODE, struct.pack("I", CEC_MODE_INITIATOR))
-            origin = self.logical_address(fd)
-            message = build_message(origin, CEC_LOG_ADDR_TV, OP_GIVE_DEVICE_POWER_STATUS)
-            buf = array.array("B", pack_transmit(message, OP_REPORT_POWER_STATUS, timeout_ms))
-            self._ioctl(fd, CEC_TRANSMIT, buf, True)
-            state, error = interpret(*parse_transmit(bytes(buf)))
+            state, error = interpret(*self._transmit(
+                fd, CEC_LOG_ADDR_TV, OP_GIVE_DEVICE_POWER_STATUS, OP_REPORT_POWER_STATUS, timeout_ms))
             return Reading(state, error, device)
         except OSError as exc:
             return Reading(POWER_UNKNOWN, _error_name(exc), device)
+        finally:
+            self._close(fd)
+
+    def send_standby(self, device, timeout_ms=1000):
+        """Ordena el standby al televisor. Devuelve None si lo acepto, o el error."""
+        try:
+            fd = self._initiator(device)
+        except OSError as exc:
+            return _error_name(exc)
+        try:
+            tx_status, _rx, _body = self._transmit(fd, CEC_LOG_ADDR_TV, OP_STANDBY, 0, timeout_ms)
+            return interpret_tx(tx_status)
+        except OSError as exc:
+            return _error_name(exc)
+        finally:
+            self._close(fd)
+
+    def query_active_source(self, device, timeout_ms=1500):
+        """Pregunta a todo el bus quien es la fuente activa y la compara con la propia."""
+        try:
+            fd = self._initiator(device)
+        except OSError as exc:
+            return ActiveSource(None, None, _error_name(exc), device)
+        own = None
+        try:
+            own = self.physical_address(fd)
+            address, error = interpret_active_source(*self._transmit(
+                fd, CEC_LOG_ADDR_BROADCAST, OP_REQUEST_ACTIVE_SOURCE, OP_ACTIVE_SOURCE, timeout_ms))
+            return ActiveSource(address, own, error, device)
+        except OSError as exc:
+            return ActiveSource(None, own, _error_name(exc), device)
         finally:
             self._close(fd)

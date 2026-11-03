@@ -16,10 +16,11 @@ dentro de Kodi y mantiene el adaptador abierto en modo exclusivo; cualquier
 proceso externo recibe `EBUSY` (`ioctl CEC_S_MODE failed - errno=16`). Medido en
 LibreELEC y en Recalbox.
 
-Consecuencia: el addon **no transmite CEC por su cuenta**. Traduce una accion a un
-builtin de Kodi (`CECStandby`, `CECActivateSource`, `CECToggleState`) y deja que
-transmita Kodi. Si alguna vez hace falta *leer* el estado del televisor, hay un
-camino validado que no pasa por Kodi: ver `docs/DESIGN.md`.
+Consecuencia: el addon no usa libCEC por su cuenta. Las acciones se traducen a
+builtins de Kodi (`CECActivateSource`, `CECToggleState`), **salvo el standby**, que
+desde 0.3.0 se transmite por el API CEC del kernel en modo iniciador **no exclusivo**
+(el mismo camino validado para leer el estado), con el builtin `CECStandby` como
+respaldo: ese builtin solo actua si Kodi es la fuente activa. Ver `docs/DESIGN.md`.
 
 ## Reglas
 

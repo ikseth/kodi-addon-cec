@@ -6,6 +6,8 @@ Window(Home).Property(<nombre>). Cualquier cambio incompatible exige subir
 PROTOCOL.
 """
 
+from cec_kernel import KODI_ACTIVE_UNKNOWN, format_physical
+
 PROTOCOL = "1"
 
 PROP_PROTOCOL = "cec.protocol"
@@ -14,9 +16,13 @@ PROP_TV_POWER_TS = "cec.tv_power_ts"      # epoch (s) de la ultima consulta
 PROP_ERROR = "cec.error"                  # vacio si la consulta dio un estado
 PROP_DEVICE = "cec.device"                # adaptador consultado
 PROP_POLL_INTERVAL = "cec.poll_interval"  # segundos entre consultas
+# Desde 0.3.0 (compatible: solo se anaden). Solo se consultan con el televisor encendido.
+PROP_ACTIVE_SOURCE = "cec.active_source"        # direccion fisica de la fuente activa ("0.0.0.0" = el propio televisor) o vacio
+PROP_KODI_ACTIVE = "cec.kodi_active_source"     # yes | no | unknown: si lo que se ve es este Kodi
 
 PUBLISHED_PROPERTIES = (PROP_PROTOCOL, PROP_TV_POWER, PROP_TV_POWER_TS,
-                        PROP_ERROR, PROP_DEVICE, PROP_POLL_INTERVAL)
+                        PROP_ERROR, PROP_DEVICE, PROP_POLL_INTERVAL,
+                        PROP_ACTIVE_SOURCE, PROP_KODI_ACTIVE)
 
 # La escribe el script tras enviar una orden; el servicio la usa para releer ya.
 PROP_REFRESH_REQUEST = "cec.refresh_request"
@@ -52,7 +58,8 @@ def select_device(setting, finder):
     return setting
 
 
-def build_properties(reading, now, interval):
+def build_properties(reading, now, interval, active=None):
+    """`active` es un ActiveSource (o None si no se consulto: televisor no encendido)."""
     return {
         PROP_PROTOCOL: PROTOCOL,
         PROP_TV_POWER: reading.state,
@@ -60,6 +67,8 @@ def build_properties(reading, now, interval):
         PROP_ERROR: reading.error or "",
         PROP_DEVICE: reading.device or "",
         PROP_POLL_INTERVAL: str(interval),
+        PROP_ACTIVE_SOURCE: format_physical(active.address) if active is not None else "",
+        PROP_KODI_ACTIVE: active.kodi if active is not None else KODI_ACTIVE_UNKNOWN,
     }
 
 

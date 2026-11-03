@@ -39,6 +39,14 @@ msgctxt "#30016"
 msgid "Disabled by default: the result depends on a state that the caller cannot see."
 msgstr "Disabled by default: the result depends on a state that the caller cannot see."
 
+msgctxt "#30017"
+msgid "Send standby directly over the CEC bus"
+msgstr "Send standby directly over the CEC bus"
+
+msgctxt "#30018"
+msgid "Sends the standby straight to the TV through the kernel CEC API, so it works even when Kodi is not the active source (TV on its tuner or another input). If it fails, Kodi's CECStandby is used."
+msgstr "Sends the standby straight to the TV through the kernel CEC API, so it works even when Kodi is not the active source (TV on its tuner or another input). If it fails, Kodi's CECStandby is used."
+
 msgctxt "#30020"
 msgid "Feedback"
 msgstr "Feedback"

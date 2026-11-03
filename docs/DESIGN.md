@@ -29,6 +29,12 @@ abiertos los dos adaptadores del equipo.
 Conclusion: para **actuar**, pedirselo a Kodi es la unica via limpia. No es un
 rodeo, es lo correcto: se usa el mismo camino que Kodi usa para su propio mando.
 
+> **Revisado en 0.3.0.** La conclusion vale para libCEC, no para el API del kernel.
+> El modo iniciador **no exclusivo** del kernel (el de la lectura, mas abajo) tambien
+> permite transmitir. Hacia falta, porque `CECStandby` solo envia el standby si Kodi
+> es la fuente activa: con el televisor en la TDT no hacia nada (ver «Standby directo
+> y fuente activa (0.3.0)»). El resto de acciones siguen yendo por los builtins.
+
 ## Camino validado para *leer* el estado del televisor
 
 Actuar se delega en Kodi, pero **leer** el estado no se puede: Kodi no expone por
@@ -136,3 +142,29 @@ interferencias de la consulta periodica con el mando por CEC: se considero que e
 alcance del proyecto y los resultados medidos lo justificaban. Si apareciera esa
 interferencia, se mitiga sin tocar codigo subiendo `poll_interval` o desactivando
 la publicacion del estado en los ajustes.
+
+## Standby directo y fuente activa (0.3.0)
+
+**Sintoma.** El standby fallaba de forma intermitente: el addon ejecutaba siempre
+`CECStandby` (se ve en el log de Kodi), pero el televisor solo obedecia a veces. En
+todos los fallos el televisor estaba en su sintonizador (TDT).
+
+**Causa.** `CECStandby` solo transmite el standby si Kodi es la fuente activa. Con
+otra entrada o con el sintonizador no envia nada y no informa de ningun error.
+
+**Medidas (dos televisores, ambos en la TDT, Kodi en LibreELEC):**
+
+| Prueba | Resultado |
+|---|---|
+| `Request Active Source` (0x85) a todo el bus, esperando `Active Source` (0x82) | El propio televisor contesta `0f 82 00 00`: fuente activa `0.0.0.0`. La direccion fisica de Kodi es otra (`x.0.0.0`) |
+| Standby (0x36) directo al televisor desde el modo iniciador no exclusivo, con Kodi arrancado | Aceptado (`tx_status` OK); el televisor pasa a `standby` en unos 7 s, sin cambiar de entrada y sin desalojar a Kodi |
+
+**Diseno.**
+- `CecKernel.send_standby` transmite 0x36 a la direccion logica del televisor con la
+  direccion logica de Kodi como origen, igual que la lectura.
+- `cec.plan_standby` decide la via: directa si el ajuste esta activo y el envio se
+  acepta; si no, el builtin (con el motivo en el log).
+- `CecKernel.query_active_source` pregunta la fuente activa y la compara con la
+  direccion fisica propia. El servicio solo la consulta con el televisor encendido, y
+  publica `cec.active_source` y `cec.kodi_active_source`. Justo durante un standby
+  puede salir `no_reply`: en transicion el televisor no contesta.

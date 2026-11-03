@@ -63,4 +63,4 @@ def test_el_servicio_planifica_con_reloj_monotonico_y_publica_hora_de_pared():
     codigo = _read("service.py")
     assert "RefreshScheduler(interval, time.monotonic())" in codigo
     assert "now = time.monotonic()" in codigo
-    assert "build_properties(reading, time.time(), interval)" in codigo
+    assert "build_properties(reading, time.time(), interval, active)" in codigo

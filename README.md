@@ -37,13 +37,22 @@ Pidiendoselo a Kodi el conflicto desaparece, y ademas:
 
 | Accion | Builtin de Kodi | Efecto |
 |---|---|---|
-| `standby` | `CECStandby` | Apaga el televisor |
+| `standby` | Directo por el kernel; si falla, `CECStandby` | Apaga el televisor |
 | `activate` | `CECActivateSource` | Lo enciende y lo cambia a la entrada HDMI de este equipo |
 | `toggle` | `CECToggleState` | Alterna |
 
 Cada una se habilita o veta por separado en los ajustes del addon. `toggle` viene
 **desactivada por defecto**: su resultado depende de un estado que quien llama no
 ve, asi que es facil usarla por error.
+
+### Standby directo (desde 0.3.0)
+
+`CECStandby` de Kodi **solo envia el standby si Kodi es la fuente activa**. Con el
+televisor en su sintonizador (TDT) u otra entrada, no hace nada y no da error. Desde
+0.3.0 el standby se envia directamente al televisor por el API CEC del kernel, en el
+mismo modo iniciador no exclusivo que usa la lectura del estado: no desaloja a Kodi
+ni cambia la entrada del televisor. Si el envio directo falla, se usa `CECStandby`.
+Se puede desactivar con el ajuste «Enviar el apagado directamente por el bus CEC».
 
 ## Estado del televisor (desde 0.2.0)
 
@@ -67,6 +76,13 @@ Se leen desde fuera por JSON-RPC:
 | `cec.error` | Vacio si hubo respuesta; si no, el motivo (`nack`, `no_reply`, `EBUSY`...) |
 | `cec.device` | Adaptador consultado |
 | `cec.poll_interval` | Segundos entre consultas |
+| `cec.active_source` | Desde 0.3.0. Direccion fisica de la fuente activa (`0.0.0.0` es el propio televisor, p. ej. en la TDT); vacio si no se sabe |
+| `cec.kodi_active_source` | Desde 0.3.0. `yes` si lo que muestra el televisor es este equipo, `no` si es otra cosa, `unknown` si no se sabe |
+
+La fuente activa solo se consulta con el televisor encendido (`Request Active
+Source` a todo el bus). Sirve, por ejemplo, para apagar el televisor por inactividad
+solo cuando lo que se ve es Kodi, sin depender de la red del televisor. Las dos
+propiedades se anaden sin romper el contrato: el protocolo sigue siendo `1`.
 
 Reglas para quien consuma el estado:
 

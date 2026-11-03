@@ -14,7 +14,7 @@ import xbmcgui
 sys.path.insert(0, os.path.join(
     xbmcaddon.Addon().getAddonInfo("path"), "resources", "lib"))
 
-from cec_kernel import POWER_UNKNOWN, CecKernel, Reading  # noqa: E402
+from cec_kernel import POWER_ON, POWER_UNKNOWN, CecKernel, Reading  # noqa: E402
 from state import (CANDIDATE_DEVICES, PROP_REFRESH_REQUEST, PROP_TV_POWER,  # noqa: E402
                    PUBLISHED_PROPERTIES, RefreshScheduler, build_properties,
                    clamp_interval, select_device)
@@ -34,6 +34,7 @@ class Service(object):
         self.device = None
         self.last_refresh = self.home.getProperty(PROP_REFRESH_REQUEST)
         self.last_logged = None
+        self.last_logged_active = None
 
     @staticmethod
     def _settings():
@@ -57,6 +58,19 @@ class Service(object):
             self.last_logged = key
             level = xbmc.LOGWARNING if reading.error else xbmc.LOGINFO
             xbmc.log("%s: estado del televisor %r" % (NAME, reading), level)
+
+    def _log_active_if_changed(self, active):
+        key = None if active is None else (active.kodi, active.address, active.error)
+        if key != self.last_logged_active:
+            self.last_logged_active = key
+            if active is not None:
+                xbmc.log("%s: fuente activa %r" % (NAME, active), xbmc.LOGINFO)
+
+    def _read_active(self, reading):
+        """Solo con el televisor encendido: apagado no hay fuente activa que leer."""
+        if reading.state != POWER_ON or self.device is None:
+            return None
+        return self.kernel.query_active_source(self.device)
 
     def _read(self, device_setting):
         if self.device is None or device_setting not in ("", "auto"):
@@ -86,12 +100,15 @@ class Service(object):
                 enabled, interval, device_setting = self._settings()
                 scheduler.interval = interval
                 if enabled:
+                    active = None
                     try:
                         reading = self._read(device_setting)
+                        active = self._read_active(reading)
                     except Exception as exc:  # el servicio no debe morir nunca
                         reading = Reading(POWER_UNKNOWN, "internal:%s" % type(exc).__name__, self.device)
-                    self._publish(build_properties(reading, time.time(), interval))
+                    self._publish(build_properties(reading, time.time(), interval, active))
                     self._log_if_changed(reading)
+                    self._log_active_if_changed(active)
                     scheduler.done(now, reading.state)
                 else:
                     self._clear()

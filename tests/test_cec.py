@@ -3,7 +3,7 @@
 import pytest
 
 
-from cec import BUILTINS, SETTING_FOR, CecError, parse_action, resolve
+from cec import BUILTINS, SETTING_FOR, CecError, parse_action, plan_standby, resolve
 
 TODO_PERMITIDO = lambda _setting: True
 NADA_PERMITIDO = lambda _setting: False
@@ -64,3 +64,23 @@ def test_resolve_consulta_el_ajuste_que_corresponde():
     with pytest.raises(CecError):
         resolve("activate", espia)
     assert consultados == ["allow_standby", "allow_activate"]
+
+
+# ---- 0.3.0: decision de como ejecutar el standby
+
+def test_standby_directo_si_el_kernel_lo_acepta():
+    assert plan_standby(True, "/dev/cec0", lambda d: None) == ("kernel", None)
+
+
+def test_standby_recurre_al_builtin_si_el_envio_directo_falla():
+    assert plan_standby(True, "/dev/cec0", lambda d: "nack") == ("builtin", "nack")
+
+
+def test_standby_recurre_al_builtin_sin_adaptador():
+    assert plan_standby(True, None, lambda d: None) == ("builtin", "no_adapter")
+
+
+def test_standby_directo_desactivado_usa_el_builtin_sin_tocar_el_bus():
+    llamado = []
+    assert plan_standby(False, "/dev/cec0", lambda d: llamado.append(d)) == ("builtin", None)
+    assert llamado == []
